@@ -14,6 +14,10 @@ export const SET_USER_PHONE = 'set_user_phone';
 export const SET_USER_PASSWORD = 'set_user_password';
 export const GET_DASHBOARD = 'get_dashboard';
 // export const GET_COLOR = 'get_color';
+// const BACKEND_API_URI = 'http://localhost:8005';
+
+const BACKEND_API_URI = process.env.REACT_APP_BACKEND_API_URI;
+console.log(process.env.REACT_APP_BACKEND_API_URI);
 
 export const getBudgetAction = () => dispatch => {
   const userId = getEmail();
@@ -22,7 +26,7 @@ export const getBudgetAction = () => dispatch => {
   let currentSpending = {};
   let categories = [];
   axios
-    .post('https://saverlife-a-api.herokuapp.com/data/future_budget', {
+    .post(`${BACKEND_API_URI}/data/future_budget`, {
       user_id: userId,
       monthly_savings_goal: 50,
       placeholder: 'banjo',
@@ -34,10 +38,9 @@ export const getBudgetAction = () => dispatch => {
       console.log(categories);
       // console.log('request complete');
       axios
-        .post(
-          `https://saverlife-a-api.herokuapp.com/data/current_month_spending/${userId}`,
-          { categories }
-        )
+        .post(`${BACKEND_API_URI}/data/current_month_spending/${userId}`, {
+          categories,
+        })
         .then(response => {
           // console.log(response.data)
           currentSpending = response.data;
@@ -56,7 +59,7 @@ export const getSpendingBarAction = () => dispatch => {
   const userId = getEmail();
 
   axios
-    .post('https://saverlife-a-api.herokuapp.com/data/spending', {
+    .post(`${BACKEND_API_URI}/data/spending`, {
       user_ID: userId,
       graph_type: 'bar',
       time_period: 'week',
@@ -79,7 +82,7 @@ export const getSpendingDonutAction = () => dispatch => {
   const userId = getEmail();
 
   axios
-    .post('https://saverlife-a-api.herokuapp.com/data/spending', {
+    .post(`${BACKEND_API_URI}/data/spending`, {
       user_ID: userId,
       graph_type: 'pie',
       time_period: 'month',
@@ -102,7 +105,7 @@ export const getNetIncomeAction = () => dispatch => {
   const userId = getEmail();
 
   axios
-    .post('https://saverlife-a-api.herokuapp.com/data/moneyflow', {
+    .post(`${BACKEND_API_URI}/data/moneyflow`, {
       user_ID: userId,
       time_period: 'month',
     })
@@ -163,84 +166,80 @@ export const setUserPassword = password => dispatch => {
 export const getDashboard = () => dispatch => {
   const user_id = getEmail();
 
-  axios
-    .get(`https://saverlife-a-api.herokuapp.com/data/dashboard/${user_id}`)
-    .then(response => {
-      let parsed = JSON.parse(response.data);
-      console.log(parsed);
-      console.log(JSON.parse(parsed[0]));
-      const payload = {
-        transactions: JSON.parse(parsed[0]),
-        spendEarnRatio: parsed[1].spend_earn_ratio,
-        account_type: parsed[2].account_type,
-        current_balance: parsed[3].current_balance,
+  axios.get(`${BACKEND_API_URI}/data/dashboard/${user_id}`).then(response => {
+    let parsed = JSON.parse(response.data);
+    console.log(parsed);
+    console.log(JSON.parse(parsed[0]));
+    const payload = {
+      transactions: JSON.parse(parsed[0]),
+      spendEarnRatio: parsed[1].spend_earn_ratio,
+      account_type: parsed[2].account_type,
+      current_balance: parsed[3].current_balance,
+    };
+    let objectTransactions = [];
+    let index = 0;
+    let dateTime = new Date();
+    const weekAgo = new Date().getTime() - 604800000;
+    // get only transactions from the last week
+    while (dateTime.getTime() >= weekAgo) {
+      let expandedDate = Object.values(payload.transactions.Date[index])
+        .join('')
+        .split('/');
+      dateTime = new Date(
+        '20' + expandedDate[2],
+        Number(expandedDate[0]) - 1,
+        expandedDate[1]
+      );
+      let fullTransaction = {
+        amount: Object.values(payload.transactions['Amount($)'])[index].toFixed(
+          2
+        ),
+        category: Object.values(payload.transactions.Category[index]).join(''),
+        date: Object.values(payload.transactions.Date[index]).join(''),
       };
-      let objectTransactions = [];
-      let index = 0;
-      let dateTime = new Date();
-      const weekAgo = new Date().getTime() - 604800000;
-      // get only transactions from the last week
-      while (dateTime.getTime() >= weekAgo) {
-        let expandedDate = Object.values(payload.transactions.Date[index])
-          .join('')
-          .split('/');
-        dateTime = new Date(
-          '20' + expandedDate[2],
-          Number(expandedDate[0]) - 1,
-          expandedDate[1]
-        );
-        let fullTransaction = {
-          amount: Object.values(payload.transactions['Amount($)'])[
-            index
-          ].toFixed(2),
-          category: Object.values(payload.transactions.Category[index]).join(
-            ''
-          ),
-          date: Object.values(payload.transactions.Date[index]).join(''),
-        };
-        objectTransactions.push(fullTransaction);
-        index++;
-      }
-      // for (let index = 0; index < 100; index++) {
-      //   let expandedDate = Object.values(payload.transactions.Date[index]).join('').split('/')
-      //   let dateTime = new Date('20'+expandedDate[2], Number(expandedDate[0])-1, expandedDate[1])
-      //   let fullTransaction = {
-      //     amount: Object.values(payload.transactions['Amount($)'])[0],
-      //     category: Object.values(payload.transactions.Category[index]).join(''),
-      //     date: dateTime
-      //   }
-      //   objectTransactions.push(fullTransaction)
-      // }
-      // Object.values(payload.transactions.Date).forEach((transaction, index) => {
-      //   let fullTransaction = {
-      //     // amount: Object.values(payload.transactions['Account($)'])[index],
-      //     category: Object.values(payload.transactions.Category[index]),
-      //     date: Object.values(payload.transactions.Date[index])
-      //   }
-      //   objectTransactions.push(fullTransaction)
-      // })
-      // console.log(objectTransactions)
-      payload.transactions = objectTransactions;
-      // console.log(Object.values(payload.transactions.Category[0]).join(''))
-      // console.log(Object.values(payload.transactions.Date));
-      // console.log(Object.values(payload.transactions['Amount($)'])[0]);
-      // console.log(payload);
-      // const today = new Date().getTime()
-      // console.log(today)
-      dispatch({ type: GET_DASHBOARD, payload });
-    });
+      objectTransactions.push(fullTransaction);
+      index++;
+    }
+    // for (let index = 0; index < 100; index++) {
+    //   let expandedDate = Object.values(payload.transactions.Date[index]).join('').split('/')
+    //   let dateTime = new Date('20'+expandedDate[2], Number(expandedDate[0])-1, expandedDate[1])
+    //   let fullTransaction = {
+    //     amount: Object.values(payload.transactions['Amount($)'])[0],
+    //     category: Object.values(payload.transactions.Category[index]).join(''),
+    //     date: dateTime
+    //   }
+    //   objectTransactions.push(fullTransaction)
+    // }
+    // Object.values(payload.transactions.Date).forEach((transaction, index) => {
+    //   let fullTransaction = {
+    //     // amount: Object.values(payload.transactions['Account($)'])[index],
+    //     category: Object.values(payload.transactions.Category[index]),
+    //     date: Object.values(payload.transactions.Date[index])
+    //   }
+    //   objectTransactions.push(fullTransaction)
+    // })
+    // console.log(objectTransactions)
+    payload.transactions = objectTransactions;
+    // console.log(Object.values(payload.transactions.Category[0]).join(''))
+    // console.log(Object.values(payload.transactions.Date));
+    // console.log(Object.values(payload.transactions['Amount($)'])[0]);
+    // console.log(payload);
+    // const today = new Date().getTime()
+    // console.log(today)
+    dispatch({ type: GET_DASHBOARD, payload });
+  });
 };
 
 // export const getColorTheme = dispatch => {
 //   const userId = getEmail();
 
-//   axios.get(`https://saverlife-a-api.herokuapp.com/color/${userId}`)
+//   axios.get(`${process.env.BACKEND_API_URI}/color/${userId}`)
 //     .then(response => {
 //       dispatch({type: GET_COLOR, payload: response.data})
 //     })
 // }
 // export const postColorTheme = (color) = dispatch => {
-//   axios.post(`https://saverlife-a-api.herokuapp.com/color/${userId}`, { color })
+//   axios.post(`${process.env.BACKEND_API_URI}/color/${userId}`, { color })
 //     .then(response => {
 //       dispatch({type: GET_COLOR, payload: response.data})
 //     })
